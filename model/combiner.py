@@ -162,17 +162,19 @@ class Combiner:
         missing = [key for key in key_list if key not in config_keys]
         assert len(missing) == 0, 'Config is missing the following keys: {}'.format(missing)
     
-    def train_step(self, text, mel, stop, pre_dropout, mask_prob=0.):
+    def train_step(self, text, mel, stop, pre_dropout, mask_prob=0., lookback_prob=1.):
         masked_text = random_text_mask(text, mask_prob)
         masked_mel = random_mel_mask(mel, mask_prob)
         output = {}
         if 'mel_mel' in self.transformer_kinds:
             train_out = self.mel_mel.train_step(masked_mel, mel, stop,
-                                                decoder_prenet_dropout=pre_dropout)
+                                                decoder_prenet_dropout=pre_dropout,
+                                                lookback_prob=lookback_prob)
             output.update({'mel_mel': train_out})
         if 'text_mel' in self.transformer_kinds:
             train_out = self.text_mel.train_step(text, mel, stop,
-                                                 decoder_prenet_dropout=pre_dropout)
+                                                 decoder_prenet_dropout=pre_dropout,
+                                                 lookback_prob=lookback_prob)
             output.update({'text_mel': train_out})
         if 'mel_text' in self.transformer_kinds:
             train_out = self.mel_text.train_step(mel, text)

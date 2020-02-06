@@ -69,6 +69,15 @@ def create_mel_padding_mask(seq):
     return seq[:, tf.newaxis, tf.newaxis, :]  # (batch_size, 1, y, x)
 
 
-def create_look_ahead_mask(size):
+def create_look_ahead_mask(size, lookback_prob=1.):
     mask = 1 - tf.linalg.band_part(tf.ones((size, size)), -1, 0)
+    if lookback_prob < 1:
+        mask += create_lookback_mask(size, p=lookback_prob)
     return mask
+
+
+def create_lookback_mask(size, p):
+    base = tf.cast(tf.random.uniform((size, size)) > p, tf.float32)
+    mask = tf.linalg.band_part(base, -1, 0)
+    diag_mask = 1 - tf.linalg.band_part(tf.ones((size, size)), 0, 0)
+    return mask * diag_mask

@@ -169,6 +169,7 @@ class MelTransformer(Transformer):
                     tf.TensorSpec(shape=(None, None, decoder_postnet.mel_channels), dtype=tf.float32),
                     tf.TensorSpec(shape=(None, None, decoder_postnet.mel_channels), dtype=tf.float32),
                     tf.TensorSpec(shape=(None, None), dtype=tf.int32),
+                    tf.TensorSpec(shape=(None), dtype=tf.float32),
                     tf.TensorSpec(shape=(None), dtype=tf.float32)
                 ]
             )(self._train_step)
@@ -180,7 +181,7 @@ class MelTransformer(Transformer):
         output = tf.expand_dims(self.start_vec, 0)
         out_dict = {}
         for i in range(max_length):
-            enc_padding_mask, combined_mask, dec_padding_mask = self.create_masks(inputs, output)
+            enc_padding_mask, combined_mask, dec_padding_mask = self.create_masks(inputs, output, lookback_prob=1.)
             model_out = self.__call__(inputs=inputs,
                                       targets=output,
                                       training=False,
@@ -195,19 +196,19 @@ class MelTransformer(Transformer):
                 break
         return out_dict
     
-    def create_masks(self, inp, tar_inp):
+    def create_masks(self, inp, tar_inp, lookback_prob):
         enc_padding_mask = create_mel_padding_mask(inp)
         dec_padding_mask = create_mel_padding_mask(inp)
         dec_target_padding_mask = create_mel_padding_mask(tar_inp)
-        look_ahead_mask = create_look_ahead_mask(tf.shape(tar_inp)[1])
+        look_ahead_mask = create_look_ahead_mask(tf.shape(tar_inp)[1], lookback_prob=lookback_prob)
         combined_mask = tf.maximum(dec_target_padding_mask, look_ahead_mask)
         return enc_padding_mask, combined_mask, dec_padding_mask
     
-    def _train_step(self, inp, tar, stop_prob, decoder_prenet_dropout):
+    def _train_step(self, inp, tar, stop_prob, decoder_prenet_dropout, lookback_prob):
         tar_inp = tar[:, :-1, :]
         tar_real = tar[:, 1:, :]
         tar_stop_prob = stop_prob[:, 1:]
-        enc_padding_mask, combined_mask, dec_padding_mask = self.create_masks(inp, tar_inp)
+        enc_padding_mask, combined_mask, dec_padding_mask = self.create_masks(inp, tar_inp, lookback_prob)
         with tf.GradientTape() as tape:
             model_out = self.__call__(inputs=inp,
                                       targets=tar_inp,
@@ -386,6 +387,7 @@ class TextMelTransformer(Transformer):
                     tf.TensorSpec(shape=(None, None), dtype=tf.int32),
                     tf.TensorSpec(shape=(None, None, decoder_postnet.mel_channels), dtype=tf.float32),
                     tf.TensorSpec(shape=(None, None), dtype=tf.int32),
+                    tf.TensorSpec(shape=(None), dtype=tf.float32),
                     tf.TensorSpec(shape=(None), dtype=tf.float32)
                 ]
             )(self._train_step)
@@ -403,7 +405,7 @@ class TextMelTransformer(Transformer):
         output = tf.expand_dims(self.start_vec, 0)
         out_dict = {}
         for i in range(max_length):
-            enc_padding_mask, combined_mask, dec_padding_mask = self.create_masks(inp, output)
+            enc_padding_mask, combined_mask, dec_padding_mask = self.create_masks(inp, output, lookback_prob=1.)
             model_out = self.__call__(inputs=inp,
                                       targets=output,
                                       training=False,
@@ -419,19 +421,19 @@ class TextMelTransformer(Transformer):
                 break
         return out_dict
     
-    def create_masks(self, inp, tar_inp):
+    def create_masks(self, inp, tar_inp, lookback_prob):
         enc_padding_mask = create_text_padding_mask(inp)
         dec_padding_mask = create_text_padding_mask(inp)
         dec_target_padding_mask = create_mel_padding_mask(tar_inp)
-        look_ahead_mask = create_look_ahead_mask(tf.shape(tar_inp)[1])
+        look_ahead_mask = create_look_ahead_mask(tf.shape(tar_inp)[1], lookback_prob=lookback_prob)
         combined_mask = tf.maximum(dec_target_padding_mask, look_ahead_mask)
         return enc_padding_mask, combined_mask, dec_padding_mask
     
-    def _train_step(self, inp, tar, stop_prob, decoder_prenet_dropout):
+    def _train_step(self, inp, tar, stop_prob, decoder_prenet_dropout, lookback_prob):
         tar_inp = tar[:, :-1]
         tar_real = tar[:, 1:]
         tar_stop_prob = stop_prob[:, 1:]
-        enc_padding_mask, combined_mask, dec_padding_mask = self.create_masks(inp, tar_inp)
+        enc_padding_mask, combined_mask, dec_padding_mask = self.create_masks(inp, tar_inp, lookback_prob)
         with tf.GradientTape() as tape:
             model_out = self.__call__(inputs=inp,
                                       targets=tar_inp,

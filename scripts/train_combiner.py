@@ -117,7 +117,8 @@ while combiner.step < config['max_steps']:
                                      mel=mel,
                                      stop=stop,
                                      pre_dropout=decoder_prenet_dropout,
-                                     mask_prob=config['mask_prob'])
+                                     mask_prob=config['mask_prob'],
+                                     lookback_prob=config['lookback_prob'])
         print(f'\nbatch {combiner.step}')
 
         summary_manager.write_loss(output, combiner.step)
