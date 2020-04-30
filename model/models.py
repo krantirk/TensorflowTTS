@@ -120,20 +120,41 @@ class AutoregressiveTransformer(tf.keras.models.Model):
             {'attention_weights': attention_weights, 'decoder_output': dec_output, 'out_proj': out_proj})
         return model_output
     
-    def predict(self, inp, max_length=50, decoder_prenet_dropout=0.5, encode=False, verbose=True):
+    def predict(self, inp, max_length=50, decoder_prenet_dropout=0.5, encode=False, verbose=False, retries=10, tolerance=5):
         if encode:
             inp = self.encode_text(inp)
         inp = tf.cast(tf.expand_dims(inp, 0), tf.int32)
         output = tf.cast(tf.expand_dims(self.start_vec, 0), tf.float32)
         output_concat = tf.cast(tf.expand_dims(self.start_vec, 0), tf.float32)
         out_dict = {}
+
+        attentions = []
         for i in range(int(max_length // self.r) + 1):
-            model_out = self.forward(inp=inp,
-                                     output=output,
-                                     decoder_prenet_dropout=decoder_prenet_dropout)
-            output = tf.concat([output, model_out['final_output'][:1, -1:, :]], axis=-2)
-            output_concat = tf.concat([tf.cast(output_concat, tf.float32), model_out['final_output'][:1, -self.r:, :]],
-                                      axis=-2)
+
+            min_diff_output = None
+            min_diff = 9999
+            for retry in range(retries + 1):
+                model_out = self.forward(inp=inp,
+                                         output=output,
+                                         decoder_prenet_dropout=decoder_prenet_dropout)
+                att = model_out['attention_weights']['decoder_layer4_block2'][0, :, -1, :]
+                if len(attentions) > 0:
+                    last_max = tf.argmax(attentions[-1], axis=-1)
+                    current_max = tf.argmax(att, axis=-1)
+                    sum_diff = tf.reduce_sum(tf.abs(current_max - last_max))
+                    if sum_diff < min_diff:
+                        min_diff_output = model_out
+                        min_diff = sum_diff
+                    print(f'{i} {retry} {last_max} {current_max} {current_max-last_max} {sum_diff}')
+                    if sum_diff <= tolerance:
+                        break
+                else:
+                    min_diff_output = model_out
+                    break
+            output = tf.concat([output, min_diff_output['final_output'][:1, -1:, :]], axis=-2)
+            output_concat = tf.concat([tf.cast(output_concat, tf.float32), min_diff_output['final_output'][:1, -self.r:, :]],
+                                          axis=-2)
+            attentions.append(att)
             stop_pred = model_out['stop_prob'][:, -1]
             out_dict = {'mel': output_concat[0, 1:, :], 'attention_weights': model_out['attention_weights']}
             if verbose:
