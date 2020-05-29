@@ -16,7 +16,7 @@ def normalize(S, config):
     return np.clip(np.log(S), a_min=config['clip_min'], a_max=None)
 
 
-def denormalize(S):
+def denormalize(S, config):
     return np.exp(S)
 
 
