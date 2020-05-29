@@ -13,7 +13,7 @@ def linear_to_mel(spectrogram, config):
 
 
 def normalize(S, config):
-    return np.clip(np.log(S), a_min=config['clip_min'], a_max=None)
+    return np.log(np.clip(S, a_min=config['clip_min'], a_max=None))
 
 
 def denormalize(S, config):
@@ -21,8 +21,7 @@ def denormalize(S, config):
 
 
 def amp_to_db(x):
-    return 20 * np.log10(np.maximum(1e-5, x))
-
+    return np.log(np.maximum(1e-5, x))
 
 def db_to_amp(x):
     return np.power(10.0, x * 0.05)
