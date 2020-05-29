@@ -14,15 +14,14 @@ mel_end_value: -4
 
 # AUDIO
 sampling_rate: 22050
-n_fft: 2048
+n_fft: 1024
 mel_channels: 80
-hop_length: 275                    # 12.5ms - in line with Tacotron 2 paper
-win_length: 1100                   # 50ms - same reason as above
-f_min: 40
-min_level_db: -100
-ref_level_db: 20
-peak_norm: False  # if False, only normalizes to peak if peak>1
-max_norm: 4 # normalizes values between -max norm, max_norm
+hop_length: 256                    # 12.5ms - in line with Tacotron 2 paper
+win_length: 1024                   # 50ms - same reason as above
+f_min: 0
+f_max: None
+clip_min: 1.0e-5
+clip_max: None
 
 # TOKENIZER
 phoneme_language: 'en'
